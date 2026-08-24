@@ -102,87 +102,50 @@ def desenhar_montanhas(surface, tempo):
     pygame.draw.polygon(surface, COR_M3, picos3)
 
 
-def desenhar_chao_3d(surface, linha_y):
-    """Renderiza a grama e a pista com perspectiva pseudo-3D."""
+def desenhar_pista(surface, linha_y):
+    """Renderiza a pista 2D clássica com faixas rolando."""
     largura = surface.get_width()
     altura  = surface.get_height()
-    horizonte_y = altura // 2
-    meio_x = largura // 2
+    horizonte_y = 0
     
-    # Pista começa com largura 'w_topo' no horizonte e termina com 'w_base' na base da tela
-    w_topo = 40
-    w_base = 510  # Mantém as áreas laterais proporcionais (130px de cada lado em 1280px)
-    
-    # 1. Chão verde escuro base (pra garantir preenchimento)
-    pygame.draw.rect(surface, COR_GRAMA_ESCURA, (0, horizonte_y, largura, altura - horizonte_y))
+    # 1. Chão verde escuro base
+    surface.fill(COR_GRAMA_ESCURA)
 
-    # 2. Renderização em fatias horizontais para criar ilusão de profundidade (Mode7 feeling)
-    num_fatias = 40
-    for i in range(num_fatias):
-        # Distribuição quadrática para dar perspectiva: faixas ficam maiores e mais rápidas ao se aproximar do jogador
-        t1 = (i / num_fatias)**2
-        t2 = ((i + 1) / num_fatias)**2
-        
-        y1 = horizonte_y + t1 * (altura - horizonte_y)
-        y2 = horizonte_y + t2 * (altura - horizonte_y)
-        
-        wt1 = w_topo + t1 * (w_base - w_topo)
-        wt2 = w_topo + t2 * (w_base - w_topo)
-        
-        # Calcular a profundidade Z simulada para fazer a textura "correr" em nossa direção
-        # Quanto mais próximo de y1=horizonte, maior o Z
-        mundo_z1 = 20.0 / (t1 + 0.05)
-        
-        # Deslocamento ajustado pela velocidade do carro
-        deslocamento = linha_y * 0.015
-        
-        # Padrão xadrez/listras para a pista e grama
-        if int(mundo_z1 + deslocamento) % 2 == 0:
-            cor_asfalto = COR_ASFALTO_CLARA
-            cor_grama   = COR_GRAMA_CLARA
-        else:
-            cor_asfalto = COR_ASFALTO
-            cor_grama   = COR_GRAMA_ESCURA
-            
-        # Desenhar Grama Esquerda e Direita
-        pygame.draw.polygon(surface, cor_grama, [
-            (0, y1), (meio_x - wt1, y1),
-            (meio_x - wt2, y2), (0, y2)
-        ])
-        pygame.draw.polygon(surface, cor_grama, [
-            (meio_x + wt1, y1), (largura, y1),
-            (largura, y2), (meio_x + wt2, y2)
-        ])
-        
-        # Desenhar Asfalto
-        pygame.draw.polygon(surface, cor_asfalto, [
-            (meio_x - wt1, y1), (meio_x + wt1, y1),
-            (meio_x + wt2, y2), (meio_x - wt2, y2)
-        ])
-        
-        # Desenhar Faixas da Pista
-        if int(mundo_z1 + deslocamento * 1.5) % 2 == 0:
-            borda1 = max(2, wt1 * 0.05)
-            borda2 = max(2, wt2 * 0.05)
-            # Faixas Amarelas Laterais
-            pygame.draw.polygon(surface, COR_FAIXA_AMARELA, [
-                (meio_x - wt1, y1), (meio_x - wt1 + borda1, y1),
-                (meio_x - wt2 + borda2, y2), (meio_x - wt2, y2)
-            ])
-            pygame.draw.polygon(surface, COR_FAIXA_AMARELA, [
-                (meio_x + wt1 - borda1, y1), (meio_x + wt1, y1),
-                (meio_x + wt2, y2), (meio_x + wt2 - borda2, y2)
-            ])
-            
-            # Faixa Branca Central
-            meio1 = max(1, wt1 * 0.03)
-            meio2 = max(1, wt2 * 0.03)
-            pygame.draw.polygon(surface, COR_FAIXA, [
-                (meio_x - meio1, y1), (meio_x + meio1, y1),
-                (meio_x + meio2, y2), (meio_x - meio2, y2)
-            ])
+    # 2. Pista (Centralizada, 1020 de largura)
+    pista_w = 1020
+    pista_x = (largura - pista_w) // 2
+    pygame.draw.rect(surface, COR_ASFALTO, (pista_x, horizonte_y, pista_w, altura - horizonte_y))
 
+    # 3. Detalhes na grama (polígonos 2D)
+    tam_celula = 100
+    deslocamento_grama = int(linha_y * 0.5) % tam_celula
+    for i in range(horizonte_y - tam_celula, altura, tam_celula):
+        y_atual = i + deslocamento_grama
+        # Padrão para a esquerda
+        pontos_esq = [
+            (0, y_atual), (pista_x, y_atual + 50),
+            (pista_x, y_atual + tam_celula), (0, y_atual + 50)
+        ]
+        pygame.draw.polygon(surface, COR_GRAMA_CLARA, pontos_esq)
+        
+        # Padrão para a direita
+        pontos_dir = [
+            (largura - pista_x, y_atual + 50), (largura, y_atual),
+            (largura, y_atual + 50), (largura - pista_x, y_atual + tam_celula)
+        ]
+        pygame.draw.polygon(surface, COR_GRAMA_CLARA, pontos_dir)
 
+    # 4. Faixas da Pista
+    deslocamento_pista = int(linha_y) % 80
+    for i in range(horizonte_y - 80, altura, 80):
+        y_atual = i + deslocamento_pista
+        
+        # Faixas Amarelas Laterais
+        pygame.draw.rect(surface, COR_FAIXA_AMARELA, (pista_x, y_atual, 15, 40))
+        pygame.draw.rect(surface, COR_FAIXA_AMARELA, (pista_x + pista_w - 15, y_atual, 15, 40))
+        
+        # Faixa Branca Central
+        pygame.draw.rect(surface, COR_FAIXA, (largura // 2 - 5, y_atual, 10, 40))
 
 # ===== LOOP PRINCIPAL =====
 while True:
@@ -197,20 +160,16 @@ while True:
 
     if cenaAtual != 'game_over':
         # ---- Velocidade de scroll ----
-        velocidade_pista = 200.0
+        velocidade_pista = 400.0
         if cenaAtual == 'partida':
             velocidade_pista = listaCenas['partida'].velocidade_obstaculo
 
         linha_y    += velocidade_pista * dt
         detalhe_y  += velocidade_pista * 0.5 * dt
 
-        # ---- Renderiza camadas (de trás para frente) ----
-        desenhar_ceu(tela)
-        desenhar_estrelas(tela, tempo_total)
-        desenhar_montanhas(tela, tempo_total)
-        
-        # Renderiza a pista pseudo-3D
-        desenhar_chao_3d(tela, linha_y)
+        # ---- Renderiza camadas ----
+        # Renderiza a pista 2D (ocupando toda a tela)
+        desenhar_pista(tela, linha_y)
 
     # ---- Atualiza a cena atual ----
     cenaAnterior = cenaAtual
